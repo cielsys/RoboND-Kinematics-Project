@@ -1,6 +1,10 @@
 ## RoboticsND Project: ROS Kinematics Pick & Place
 ### Submission writeup: ChrisL
 
+<img src="misc_images/kukasuccess.png" width="60%">
+Yay!
+
+
 #### Intro
 I had hoped to make the robot safely juggle kittens but it's been
 an ardous project and I've barely achieved basic funtionality.
@@ -109,11 +113,14 @@ directly to IKCalculateJointAnglesFromPose()
 as well as to separate the various concerns.
 The notebook permitted me to create tables of output and analysis.
 
-Additionally I moved calculation of common transforms and paramaters
+I moved calculation of common transforms and paramaters
 out of the main loop into one time init code. This was to keep the main
 loop clear of debris and because the transform calculations
 can take alot of time. I created a save to file mechanism until
 I realized that simplify(transform) wasn't needed in practice.
+
+Additionally I created IK_utils.py that has many object conversions
+and print functions used in the dev debug notebook
 
 ### Enviro-Odyssey
 **tldr:** It took me a long time to get a working environment.<br/>
