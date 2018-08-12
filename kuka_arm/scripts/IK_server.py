@@ -25,35 +25,6 @@ pp = pprint.PrettyPrinter(indent=4)
 
 g_debugPrint = False
 
-################################ CHCode ##########################################
-
-def TF_Matrix(q, alpha, a, d):
-    T = Matrix([[           cos(q),           -sin(q),           0,             a],
-                [sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
-                [sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha)*d],
-                [                0,                 0,           0,             1]])
-    return(T)
-
-def R_z(y):
-    Rot_z = Matrix([[   cos(y),   -sin(y),         0],
-                    [   sin(y),    cos(y),         0],
-                    [        0,         0,         1]])
-    return(Rot_z)
-
-def R_y(p):
-    Rot_y = Matrix([[   cos(p),         0,    sin(p)],
-                    [        0,         1,         0],
-                    [  -sin(p),         0,    cos(p)]])
-
-    return(Rot_y)
-
-def R_x(r):
-    Rot_x = Matrix([[        1,         0,         0],
-                    [        0,    cos(r),   -sin(r)],
-                    [        0,    sin(r),    cos(r)]])
-
-    return(Rot_x)
-
 def TFContainerFromFile(tfFileName):
     tfFileIn = open(tfFileName, "rb" )
     tfNew = pickle.load(tfFileIn)
@@ -287,8 +258,8 @@ dictDHVals = {
 }
 
 r, p, y = symbols('r p y') # roll,pitch,yaw for Gripper fix
-R_corr = R_z(pi) * R_y(-pi/2)
-R_rpy = R_z(y) * R_y(p) * R_x(r)
+R_corr = CreateRotTransformZ(pi) * CreateRotTransformY(-pi/2)
+R_rpy = CreateRotTransformZ(y) * CreateRotTransformY(p) * CreateRotTransformX(r)
 
 print("Started individual transform processing...")
 T0_1 = CreateDHHomoTransform(alpha0, a0, d1, theta1).subs(dictDHVals)
@@ -300,43 +271,20 @@ T5_6 = CreateDHHomoTransform(alpha5, a5, d6, theta6).subs(dictDHVals)
 T6_G = CreateDHHomoTransform(alpha6, a6, d7, theta7).subs(dictDHVals)
 print("Finished.")
 
-#print("Started composite transform processing... ")
 T0_2  = (T0_1  * T1_2)
 T0_3  = (T0_2  * T2_3)
-#T0_2  = simplify(T0_1  * T1_2)
-#T0_3  = simplify(T0_2  * T2_3)
-#T0_4  = simplify(T0_3  * T3_4)
-#T0_5  = simplify(T0_4  * T4_5)
-#T0_6  = simplify(T0_5  * T5_6)
-#T0_G  = simplify(T0_6  * T6_G)
-#print("Finished.")
 
 print("Started one line composite transform processing...")
-#T0_G  = simplify(T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_G)
 T0_G  = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_G
 print("Finished.")
 
 print("Started gripper/EndEffector transform fixups, final FKtf T0_GFinal...")
 tfZ180 = CreateRotTransformZ(math.pi)
-
 tfYm90 = CreateRotTransformY(-math.pi/2.0)
-#rotGripperOrientFix = simplify(tfZ180 * tfYm90)
 rotGripperOrientFix = tfZ180 * tfYm90
 
-#tfY180 = CreateRotTransformY(math.pi)
-#rotGripperOrientFix = simplify(tfZ180 * tfY180)
-
 tfGripperOrientFix = CreateHomoTransformFromLinear(rotGripperOrientFix)
-#T0_GFinal = simplify(T0_G * tfGripperOrientFix)
 T0_GFinal =T0_G * tfGripperOrientFix
-#T0_GFinal = T0_GFinal.evalf(subs=dictDHVals)
-
-symRoll, symPitch, symYaw = Symbol("symRoll"), Symbol("symPitch"), Symbol("symYaw")
-symRot_X = CreateRotTransformX(symRoll)
-symRot_Y = CreateRotTransformY(symPitch)
-symRot_Z = CreateRotTransformZ(symYaw)
-symRot_6_GUnfixed = symRot_Z * symRot_Y * symRot_X
-symRot_6_G = symRot_6_GUnfixed  * rotGripperOrientFix
 print("Finished.")
 
 print("CWD " + os.getcwd())
@@ -394,14 +342,14 @@ def IKCalculateJointAnglesFromPose(poseReq):
     EE = Matrix([[px], [py], [pz]])
     WC = EE - (0.303) * R0_6[:,2]
 
-    if (True):
+    if (False):
         print("@@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
         print("rpy", roll, pitch, yaw)
         print("Rrpy", R_rpy)
         print("Rrpysub", R_rpysubs)
         print("R_corr", R_corr)
 
-    if (True):
+    if (False):
         print("@@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
         print("WC", WC)
         print("R0_6", R0_6)
@@ -410,7 +358,7 @@ def IKCalculateJointAnglesFromPose(poseReq):
 
     rWC = sqrt(WC[0]**2 + WC[1]**2) - 0.35 # a1
     S = WC[2] - 0.75 # d1
-    if (True):
+    if (False):
         print("@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
         print("r", rWC)
         print("S", S)
@@ -420,14 +368,10 @@ def IKCalculateJointAnglesFromPose(poseReq):
     sA = 1.501 # sqrt(d4**2 + a3**2) = 1.501
     sB = sqrt(rWC**2 + S**2) #distance between WC at joint 5 and joint 2
 
-    # now calculate theta a, b, c of the triangle, given sC, sB, and sA (cosin law)
     thetaA = acos((sB**2 + sC**2 - sA**2)/(2*sB*sC))
     thetaB = acos((sA**2 + sC**2 - sB**2)/(2*sA*sC))
     #thetaC = acos((sB**2 + sA**2 - sC**2)/(2*sA*sB))
 
-    # now calculate theta 2 and theta 3
-    #thetaJ2 = pi/2 - thetaa - atan2(WC[2]-0.75, sqrt(WC[0]*WC[0] + WC[1]*WC[1]) - 0.35)
-    #thetaJ3 = (pi/2-0.036) - thetab #1.5348 is the angle at the original position
     thetaJ2 = (pi/2) - thetaA - atan2(S, rWC)
     thetaJ3 = (pi/2) - thetaB - atan2(-a3, d4)
 
@@ -436,18 +380,10 @@ def IKCalculateJointAnglesFromPose(poseReq):
 
     dictJointAnglesCalcRad = {theta1: thetaJ1, theta2: thetaJ2, theta3: thetaJ3}
 
-    # now calculate 4, 5, and 6
     R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
     R0_3 = R0_3.evalf(subs = dictJointAnglesCalcRad)
-    #R3_6 = R0_3.inv("LU")*ROT_EE
     R3_6 = R0_3.inv("ADJ")*R0_6
 
-    #https://pdfs.semanticscholar.org/6681/37fa4b875d890f446e689eea1e334bcf6bf6.pdf
-    #theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-    #theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]), R3_6[1,2])
-    #theta6 = atan2(-R3_6[1,1], R3_6[1,0])
-
-    # R3_6 Matrix Values
     r13 = R3_6[0,2]
     r33 = R3_6[2,2]
     r23 = R3_6[1,2]
@@ -460,47 +396,8 @@ def IKCalculateJointAnglesFromPose(poseReq):
     thetaJ5 = atan2(sqrt(r13**2 + r33**2), r23)
     thetaJ6 = atan2(-r22, r21)
 
-    if (False):
-        print("@@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
-        print("thetaJ1 ", thetaJ1)
-        print("thetaJ2 ", thetaJ2)
-        print("thetaJ3 ", thetaJ3 )
-
-    # ---------------------------------------------------------
-    #side_a = 1.501
-    #side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1] * WC[1]) -0.35), 2) + pow((WC[2] - 0.75), 2))
-    #side_c = 1.25
-
-    #angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
-    #angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
-    #angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
-
-    if (False):
-        print("@@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
-        print("SideB ", side_b)
-        print("AngleABC ", degrees(angle_a), degrees(angle_b), degrees(angle_c), )
-
-    #thetaJ2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0]  + WC[1] * WC[1]) - 0.35)
-    #thetaJ3 = pi/2 - (angle_b + 0.036) # Account for sag in link4 of -0.054
-
-    #dictJointAnglesCalcRad = {theta1: thetaJ1, theta2: thetaJ2, theta3: thetaJ3}
-
-    #R0_3 = T0_1[0:3,0:3] * T0_2[0:3,0:3] * T0_3[0:3,0:3]
-    #R0_3 = R0_3.evalf(subs=dictJointAnglesCalcRad)
-
-    #R3_6 = R0_3.inv("LU") * curROT_EE
-
-    #thetaJ4 = atan2(R3_6[2,2], -R3_6[0,2])
-    #thetaJ5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]), R3_6[1,2])
-    #thetaJ6 = atan2(-R3_6[1,1], R3_6[1,0])
-
     jointAnglesCalcRad = [thetaJ1, thetaJ2, thetaJ3, thetaJ4, thetaJ5, thetaJ6]
     wristCenterCalcList = [WC[0], WC[1], WC[2]]
-    if (False):
-        print("@@@@@@@@@@@@@@@@@@@@@@@@ debugPrint @@@@@@@@@@@@@@@@@@@@@@@@")
-        print("WC ", WC)
-        print("WCList ", wristCenterCalcList)
-        print("JACalc ", jointAnglesCalcRad)
 
     return(wristCenterCalcList, jointAnglesCalcRad)
 
@@ -508,7 +405,7 @@ def IKCalculateJointAnglesFromPose(poseReq):
 def ProcessMain(request):
     trajectoryOut = []
 
-    pp.pprint(request)
+    #pp.pprint(request)
     for poseReq in request.poses:
         wristCenterCalcList, jointAnglesCalcRad = IKCalculateJointAnglesFromPose(poseReq)
         jointTrajPoint = JointTrajectoryPoint()

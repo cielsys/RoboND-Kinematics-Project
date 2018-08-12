@@ -7,16 +7,17 @@ Yay!
 
 #### Intro
 I had hoped to make the robot safely juggle kittens but it's been
-an ardous project and I've barely achieved basic funtionality.
-The wrist is still erratic throughout most trajectories.
+an ardous project and I've achieved basic functionality.
+The wrist is still erratic sometimes erratic.
 Setting up my environment was an odyssey in itself. See Enviro-Odyssey below.
 
 ### Kinematic Analysis
-This was difficult. Trying all the steps at once for a complicated robot
+The forward kinematics was not too difficult. Trying all the steps at once for a complicated robot
 such as the KR210 was time consuming.  (See Udacity Suggestions below).
 I managed to get working values eventually.
 The wrist corrections especially are difficult and may be the reason for
-my errant wrist behaviour.
+my errant wrist behaviour. I suspect that the square roots used imply multiple
+solutions that whose 'selected' orientations vary from one pose to the next.
 
 
 #### Forward_kinematics and DH parameters.
@@ -88,11 +89,20 @@ be computed.
 
 
 ### Project Implementation
+
 The entire solution resides in the python script IK_server.py 
 which is launched with ```rosrun kuka_arm IK_server.py```
 The core function is ```IKCalculateJointAnglesFromPose(poseReq, tfs, dh, dictDHVals):```
 which calulates the joint angles for a single pose following the proscribed
 reverse kinematics described in the walkthrough.
+
+
+**NOTE**
+The submitted IK_server.py is not the most recent. It is very messy but
+it basically works. The most recent is IK_serverCleanedBroken.py. 
+I had attempted to cleanup and refactor the code quite a bit. Unfortunately
+something got broken and I am needing to move on. I would love assistance
+in finding the problem in that version.
 
 I also split up the server code into intemediate functions
 * ```Server Init()```
